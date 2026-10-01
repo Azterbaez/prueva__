@@ -1,16 +1,9 @@
-
 import express from "express";
-
 import cors from "cors";
-
 import categoriaRoutes from "./routes/categoria.routes.js";
-
 import clienteRoutes from "./routes/cliente.routes.js";
-
 import productoRoutes from "./routes/producto.routes.js";
-
 import pedidoRoutes from "./routes/pedido.routes.js";
-
 import creditoRoutes from "./routes/credito.routes.js";
 
 
@@ -51,4 +44,3 @@ app.use((req, res) => {
 
 
 export default app;
-
