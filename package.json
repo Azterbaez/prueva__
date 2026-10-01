@@ -2,14 +2,21 @@
   "name": "prueva",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
     "expo": "~57.0.26",
     "expo-status-bar": "~57.0.1",
+    "express": "^5.2.1",
+    "firebase-admin": "^14.5.0",
+    "multer": "^2.4.0",
     "react": "19.2.3",
     "react-native": "0.86.3"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "node index.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"

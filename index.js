@@ -1,8 +1,8 @@
-import { registerRootComponent } from 'expo';
+import "dotenv/config";
+import app from "./app.js";
 
-import App from './App';
+const PORT = process.env.PORT || 3000;
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Servidor de prueva ejecutándose en el puerto ${PORT}`);
+});
