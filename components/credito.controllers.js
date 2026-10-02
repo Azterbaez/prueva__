@@ -4,7 +4,7 @@ import db from "../firebase.js";
 
 export const obtenerCreditos = async (req, res) => {
   try {
-    const snapshot = await db.collection("creditos").orderBy("fecha", "desc").get();
+    const snapshot = await db.collection("creditos").get();
 
     const creditos = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -317,4 +317,3 @@ export const actualizarCredito = async (req, res) => {
     });
   }
 };
-

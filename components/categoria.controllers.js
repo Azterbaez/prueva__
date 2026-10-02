@@ -4,7 +4,7 @@ import supabase from "../supabase.js";
 
 export const obtenerCategorias = async (req, res) => {
   try {
-    const snapshot = await db.collection("categorias").orderBy("fecha", "desc").get();
+    const snapshot = await db.collection("categorias").get();
     const categorias = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -178,4 +178,3 @@ export const actualizarCategoria = async (req, res) => {
           });
         }
       };
-

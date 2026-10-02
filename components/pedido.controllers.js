@@ -4,7 +4,7 @@ import db from "../firebase.js";
 
 export const obtenerPedidos = async (req, res) => {
   try {
-    const snapshot = await db.collection("pedidos").orderBy("fecha", "desc").get();
+    const snapshot = await db.collection("pedidos").get();
 
     const pedidos = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -333,4 +333,3 @@ export const actualizarPedido = async (req, res) => {
     });
   }
 };
-

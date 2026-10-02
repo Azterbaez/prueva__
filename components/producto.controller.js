@@ -2,10 +2,15 @@
 import db from "../firebase.js";
 import supabase from "../supabase.js";
 
+const convertirEstado = (estado) => {
+  if (estado === "true") return true;
+  if (estado === "false") return false;
+  return estado;
+};
 
 export const obtenerProductos = async (req, res) => {
   try {
-    const snapshot = await db.collection("productos").orderBy("fecha", "desc").get();
+    const snapshot = await db.collection("productos").get();
 
     const productos = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -32,8 +37,9 @@ export const registrarProducto = async (req, res) => {
       precio,
       stock,
       categoriaRef,
-      estado
+      estado: estadoEnviado
     } = req.body || {};
+    const estado = convertirEstado(estadoEnviado);
 
     const imagen = req.file;
 
@@ -165,8 +171,9 @@ export const actualizarProducto = async (req, res) => {
       precio,
       stock,
       categoriaRef,
-      estado
+      estado: estadoEnviado
     } = req.body || {};
+    const estado = convertirEstado(estadoEnviado);
 
     const imagen = req.file;
 
@@ -294,4 +301,3 @@ export const actualizarProducto = async (req, res) => {
     });
   }
 };
-
