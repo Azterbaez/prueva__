@@ -1,7 +1,6 @@
 import express from "express";
-
 import multer from "multer";
-
+import { capturarInfoSolicitud } from "../middlewares/auditoria.js";
 import {
   registrarCategoria,
   obtenerCategorias,
@@ -9,6 +8,7 @@ import {
 } from "../components/categoria.controllers.js";
 
 const router = express.Router();
+router.use(capturarInfoSolicitud);
 
 const upload = multer({
 

@@ -1,5 +1,5 @@
 import express from "express";
-
+import { capturarInfoSolicitud } from "../middlewares/auditoria.js";
 import {
   registrarPedido,
   obtenerPedidos,
@@ -7,6 +7,7 @@ import {
 } from "../components/pedido.controllers.js";
 
 const router = express.Router();
+router.use(capturarInfoSolicitud);
 
 router.post(
 

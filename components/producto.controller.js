@@ -1,6 +1,15 @@
-
 import db from "../firebase.js";
 import supabase from "../supabase.js";
+import { guardarAuditoria } from "../utils/auditoria.js";
+import { enviarListadoProductos } from "../utils/emailjs.js";
+
+const extraerRutaImagen = (imagenUrl) => {
+  if (!imagenUrl) return null;
+  const marker = "/imagenes_productos/";
+  const idx = imagenUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return imagenUrl.slice(idx + marker.length);
+};
 
 const convertirEstado = (estado) => {
   if (estado === "true") return true;
@@ -143,6 +152,22 @@ export const registrarProducto = async (req, res) => {
       fecha: new Date().toISOString(),
     });
 
+    await guardarAuditoria({
+      accion: "crear",
+      entidad: "producto",
+      entidadId: docRef.id,
+      valoresNuevos: {
+        nombre,
+        descripcion,
+        precio: Number(precio),
+        stock: Number(stock),
+        categoriaRef,
+        estado,
+        imagenUrl,
+      },
+      req,
+    });
+
     res.status(201).json({
       mensaje: `¡Producto registrado con éxito! ID: ${docRef.id} | Nombre: ${nombre}`,
       id: docRef.id,
@@ -274,7 +299,7 @@ export const actualizarProducto = async (req, res) => {
     }
 
 
-    await docRef.update({
+    const valoresNuevos = {
       nombre,
       descripcion,
       precio: Number(precio),
@@ -282,8 +307,18 @@ export const actualizarProducto = async (req, res) => {
       stock: Number(stock),
       categoriaRef,
       estado,
-    });
+    };
 
+    await docRef.update(valoresNuevos);
+
+    await guardarAuditoria({
+      accion: "actualizar",
+      entidad: "producto",
+      entidadId: id,
+      valoresAnteriores: doc.data(),
+      valoresNuevos,
+      req,
+    });
 
     res.status(200).json({
       mensaje: `¡Producto actualizado con éxito! ID: ${id} | Nombre: ${nombre}`,
@@ -297,6 +332,115 @@ export const actualizarProducto = async (req, res) => {
 
     res.status(500).json({
       mensaje: "Error al actualizar el producto.",
+      error: error.message,
+    });
+  }
+};
+
+export const buscarProductos = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim() === "") {
+      return res.status(400).json({
+        mensaje: "Debes enviar un término de búsqueda (parámetro q).",
+      });
+    }
+
+    const termino = q.trim().toLowerCase();
+    const snapshot = await db.collection("productos").orderBy("fecha", "desc").get();
+
+    const productos = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((p) => {
+        const nombre = String(p.nombre || "").toLowerCase();
+        const descripcion = String(p.descripcion || "").toLowerCase();
+        const categoria = String(p.categoriaRef || "").toLowerCase();
+        const precio = String(p.precio ?? "");
+        const stock = String(p.stock ?? "");
+
+        return (
+          nombre.includes(termino) ||
+          descripcion.includes(termino) ||
+          categoria.includes(termino) ||
+          precio.includes(termino) ||
+          stock.includes(termino)
+        );
+      });
+
+    res.status(200).json(productos);
+  } catch (error) {
+    console.error("Error al buscar productos:", error);
+    res.status(500).json({
+      mensaje: "Error al buscar los productos.",
+      error: error.message,
+    });
+  }
+};
+
+export const eliminarProducto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docRef = db.collection("productos").doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        mensaje: "Producto no encontrado.",
+      });
+    }
+
+    const datosAnteriores = doc.data();
+    const rutaImagen = extraerRutaImagen(datosAnteriores.imagenUrl);
+
+    if (rutaImagen) {
+      const { error: deleteError } = await supabase.storage
+        .from("imagenes_productos")
+        .remove([rutaImagen]);
+
+      if (deleteError) {
+        console.error("Error al eliminar imagen:", deleteError);
+      }
+    }
+
+    await docRef.delete();
+
+    await guardarAuditoria({
+      accion: "eliminar",
+      entidad: "producto",
+      entidadId: id,
+      valoresAnteriores: datosAnteriores,
+      req,
+    });
+
+    res.status(200).json({
+      mensaje: `Producto eliminado correctamente. ID: ${id}`,
+      id,
+    });
+  } catch (error) {
+    console.error("Error al eliminar el producto:", error);
+    res.status(500).json({
+      mensaje: "Error al eliminar el producto.",
+      error: error.message,
+    });
+  }
+};
+
+export const enviarProductosPorEmail = async (req, res) => {
+  try {
+    const snapshot = await db.collection("productos").orderBy("fecha", "desc").get();
+    const productos = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    await enviarListadoProductos(productos);
+
+    res.status(200).json({
+      mensaje: `Se envió el listado de ${productos.length} producto(s) por correo.`,
+      total: productos.length,
+    });
+  } catch (error) {
+    console.error("Error al enviar productos por email:", error);
+    res.status(500).json({
+      mensaje: "Error al enviar el listado de productos por correo.",
       error: error.message,
     });
   }
