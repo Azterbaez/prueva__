@@ -53,6 +53,35 @@ app.use("/api/creditos", creditoRoutes);
 app.use("/api", climaRoutes);
 app.use("/api", estadisticasRoutes);
 
+app.use("/pdf", (req, res) => {
+  res.status(400).json({
+    mensaje: "Ruta no válida. Use /api/estadisticas/pdf para exportar estadísticas en PDF.",
+  });
+});
+
+app.use("/excel", (req, res) => {
+  res.status(400).json({
+    mensaje: "Ruta no válida. Use /api/estadisticas/excel para exportar estadísticas en Excel.",
+  });
+});
+
+app.use("/csv", (req, res) => {
+  res.status(400).json({
+    mensaje: "Ruta no válida. Use /api/estadisticas/csv para exportar estadísticas en CSV.",
+  });
+});
+
+app.use("/json", (req, res) => {
+  res.status(400).json({
+    mensaje: "Ruta no válida. Use /api/productos/json para exportar productos en JSON.",
+  });
+});
+app.use("/api/productos/pdf", (req, res) => {
+  res.status(400).json({
+    mensaje: "Ruta no válida. Use /api/estadisticas/pdf para exportar estadísticas en PDF.",
+  });
+});
+
 app.use((req, res) => {
   res.status(404).json({
     mensaje: "Ruta no registrada.",
