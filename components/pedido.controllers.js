@@ -1,5 +1,5 @@
-
 import db from "../firebase.js";
+import { guardarAuditoria } from "../utils/auditoria.js";
 
 
 export const obtenerPedidos = async (req, res) => {
@@ -92,6 +92,8 @@ export const registrarPedido = async (req, res) => {
     }
 
 
+    const productosPorId = new Map();
+
     for (const detalle of detalles) {
       if (
         !detalle.productoRef ||
@@ -137,27 +139,82 @@ export const registrarPedido = async (req, res) => {
           mensaje: `El producto ${detalle.productoRef} no existe.`,
         });
       }
+
+      const productoData = productoDoc.data();
+      if (productoData.estado === false) {
+        return res.status(400).json({
+          mensaje: `El producto "${productoData.nombre || detalle.productoRef}" está inactivo.`,
+        });
+      }
+
+      const cantidadPedida = Number(detalle.cantidad);
+      const stockActual = Number(productoData.stock);
+      const acumulado = (productosPorId.get(detalle.productoRef)?.cantidad || 0) + cantidadPedida;
+      productosPorId.set(detalle.productoRef, {
+        nombre: productoData.nombre,
+        stock: stockActual,
+        cantidad: acumulado,
+      });
+
+      if (!Number.isFinite(stockActual) || acumulado > stockActual) {
+        return res.status(400).json({
+          mensaje: `Stock insuficiente para "${productoData.nombre || detalle.productoRef}". Disponible: ${stockActual}, solicitado: ${acumulado}.`,
+        });
+      }
     }
 
 
-    const docRef = await db.collection("pedidos").add({
+    const pedidoRef = db.collection("pedidos").doc();
+    const batch = db.batch();
+    const detallesNormalizados = detalles.map((detalle) => ({
+      productoRef: detalle.productoRef,
+      cantidad: Number(detalle.cantidad),
+      precio: Number(detalle.precio),
+      subtotal: Number(detalle.subtotal),
+    }));
+
+    batch.set(pedidoRef, {
       clienteRef,
       fecha,
       estado,
       total: Number(total),
       metodoPago,
-      detalles: detalles.map((detalle) => ({
-        productoRef: detalle.productoRef,
-        cantidad: Number(detalle.cantidad),
-        precio: Number(detalle.precio),
-        subtotal: Number(detalle.subtotal),
-      })),
+      detalles: detallesNormalizados,
+    });
+
+    for (const [productoId, info] of productosPorId.entries()) {
+      batch.update(db.collection("productos").doc(productoId), {
+        stock: info.stock - info.cantidad,
+      });
+    }
+
+    await batch.commit();
+
+    await guardarAuditoria({
+      accion: "crear",
+      entidad: "pedido",
+      entidadId: pedidoRef.id,
+      valoresNuevos: {
+        clienteRef,
+        fecha,
+        estado,
+        total: Number(total),
+        metodoPago,
+        detalles: detallesNormalizados,
+        stockDescontado: [...productosPorId.entries()].map(([id, info]) => ({
+          productoRef: id,
+          cantidad: info.cantidad,
+          stockAnterior: info.stock,
+          stockNuevo: info.stock - info.cantidad,
+        })),
+      },
+      req,
     });
 
 
     res.status(201).json({
-      mensaje: `¡Pedido registrado con éxito! ID: ${docRef.id}`,
-      id: docRef.id,
+      mensaje: `¡Pedido registrado con éxito! ID: ${pedidoRef.id}. Inventario actualizado.`,
+      id: pedidoRef.id,
       estado: estado ? "Completado" : "En proceso",
       metodoPago: metodoPago ? "Efectivo" : "Tarjeta",
     });
